@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { 
   DashboardData, 
+  Transaction,
   TransactionFilters, 
   TransactionsResponse, 
   CSVUploadResult,

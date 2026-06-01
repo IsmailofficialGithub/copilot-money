@@ -127,3 +127,7 @@ CREATE POLICY "Users can CRUD own messages" ON copilot_money.chat_messages
       SELECT id FROM copilot_money.chat_conversations WHERE user_id = auth.uid()
     )
   );
+-- Grant permissions to PostgREST roles so the API can access the tables
+GRANT USAGE ON SCHEMA copilot_money TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA copilot_money TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA copilot_money TO anon, authenticated, service_role;
