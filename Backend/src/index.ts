@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { requireAuth } from './middleware/auth.middleware';
 import { errorHandler } from './middleware/error.middleware';
+import { generalLimiter } from './middleware/rateLimit.middleware';
 
 dotenv.config();
 import chatRoutes from './routes/chat.routes';
@@ -19,6 +20,9 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Apply general IP rate limiting to all requests
+app.use(generalLimiter);
 
 // Health Check Endpoint
 app.get('/api/health', (req: Request, res: Response) => {
