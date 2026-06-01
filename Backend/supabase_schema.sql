@@ -1,6 +1,12 @@
 -- 0. Create the custom schema
 CREATE SCHEMA IF NOT EXISTS copilot_money;
 
+-- Grant usage to all necessary Supabase roles so the API and Auth triggers can access it
+GRANT USAGE ON SCHEMA copilot_money TO postgres, anon, authenticated, service_role, supabase_auth_admin;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA copilot_money TO postgres, anon, authenticated, service_role, supabase_auth_admin;
+GRANT ALL PRIVILEGES ON ALL ROUTINES IN SCHEMA copilot_money TO postgres, anon, authenticated, service_role, supabase_auth_admin;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA copilot_money TO postgres, anon, authenticated, service_role, supabase_auth_admin;
+
 -- 1. Create user_profiles table
 CREATE TABLE IF NOT EXISTS copilot_money.user_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -12,9 +18,11 @@ CREATE TABLE IF NOT EXISTS copilot_money.user_profiles (
 
 ALTER TABLE copilot_money.user_profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read own profile" ON copilot_money.user_profiles;
 CREATE POLICY "Users can read own profile" ON copilot_money.user_profiles
   FOR SELECT USING (auth.uid() = id);
   
+DROP POLICY IF EXISTS "Users can update own profile" ON copilot_money.user_profiles;
 CREATE POLICY "Users can update own profile" ON copilot_money.user_profiles
   FOR UPDATE USING (auth.uid() = id);
 
@@ -58,6 +66,7 @@ CREATE TABLE IF NOT EXISTS copilot_money.transactions (
 
 ALTER TABLE copilot_money.transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can CRUD own transactions" ON copilot_money.transactions;
 CREATE POLICY "Users can CRUD own transactions" ON copilot_money.transactions
   FOR ALL USING (auth.uid() = user_id);
 
@@ -75,5 +84,6 @@ CREATE TABLE IF NOT EXISTS copilot_money.budgets (
 
 ALTER TABLE copilot_money.budgets ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can CRUD own budgets" ON copilot_money.budgets;
 CREATE POLICY "Users can CRUD own budgets" ON copilot_money.budgets
   FOR ALL USING (auth.uid() = user_id);

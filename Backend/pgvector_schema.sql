@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS copilot_money.document_embeddings (
 -- 3. Enable RLS so users only query their own documents
 ALTER TABLE copilot_money.document_embeddings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can CRUD own embeddings" ON copilot_money.document_embeddings;
 CREATE POLICY "Users can CRUD own embeddings" ON copilot_money.document_embeddings
   FOR ALL USING (auth.uid() = user_id);
 
