@@ -1,0 +1,283 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Neomorphism Light Theme */
+    --bg-primary: #F0F0F3;
+    --bg-secondary: #E8E8EC;
+    --bg-card: #FFFFFF;
+    --bg-input: #F0F0F3;
+    
+    /* Brand Colors */
+    --primary: #6366F1;
+    --primary-hover: #818CF8;
+    --primary-pressed: #4F46E5;
+    --primary-light: #EEF2FF;
+    
+    /* Semantic Colors */
+    --success: #22C55E;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    
+    /* Text Colors */
+    --text-primary: #111827;
+    --text-secondary: #4B5563;
+    --text-muted: #9CA3AF;
+    
+    /* Neomorphic Shadows - Light */
+    --shadow-raised: 8px 8px 16px #d1d1d4, -8px -8px 16px #ffffff;
+    --shadow-raised-hover: 10px 10px 20px #c8c8cc, -10px -10px 20px #ffffff;
+    --shadow-pressed: inset 4px 4px 8px #d1d1d4, inset -4px -4px 8px #ffffff;
+    --shadow-soft: 4px 4px 12px #d1d1d4, -4px -4px 12px #ffffff;
+    --shadow-card: 6px 6px 14px #d1d1d4, -6px -6px 14px #ffffff;
+    
+    /* Typography */
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    
+    /* Radius */
+    --radius-card: 16px;
+    --radius-input: 12px;
+    --radius-modal: 24px;
+    --radius-pill: 9999px;
+    
+    /* Spacing */
+    --page-padding: clamp(1rem, 4vw, 2rem);
+  }
+
+  .dark {
+    --bg-primary: #1A1A2E;
+    --bg-secondary: #16213E;
+    --bg-card: #16213E;
+    --bg-input: #1A1A2E;
+    
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --text-muted: #6B7280;
+    
+    /* Neomorphic Shadows - Dark */
+    --shadow-raised: 8px 8px 16px #0d0d1a, -8px -8px 16px #272748;
+    --shadow-raised-hover: 10px 10px 20px #0a0a14, -10px -10px 20px #2d2d52;
+    --shadow-pressed: inset 4px 4px 8px #0d0d1a, inset -4px -4px 8px #272748;
+    --shadow-soft: 4px 4px 12px #0d0d1a, -4px -4px 12px #272748;
+    --shadow-card: 6px 6px 14px #0d0d1a, -6px -6px 14px #272748;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  /* Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  /* Neomorphic Card */
+  .neo-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+  .neo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-raised-hover);
+  }
+
+  /* Neomorphic Button - Raised */
+  .neo-btn {
+    background: var(--bg-card);
+    border-radius: var(--radius-input);
+    box-shadow: var(--shadow-raised);
+    transition: all 150ms ease;
+    cursor: pointer;
+    border: none;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+  }
+  .neo-btn:hover {
+    box-shadow: var(--shadow-raised-hover);
+    transform: translateY(-1px);
+  }
+  .neo-btn:active {
+    transform: scale(0.97);
+    box-shadow: var(--shadow-pressed);
+  }
+
+  /* Neomorphic Button - Primary */
+  .neo-btn-primary {
+    background: var(--primary);
+    color: white;
+    border-radius: var(--radius-input);
+    box-shadow: 4px 4px 12px rgba(99, 102, 241, 0.3), -4px -4px 12px rgba(99, 102, 241, 0.1);
+    transition: all 150ms ease;
+    cursor: pointer;
+    border: none;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+  }
+  .neo-btn-primary:hover {
+    background: var(--primary-hover);
+    box-shadow: 6px 6px 16px rgba(99, 102, 241, 0.4), -6px -6px 16px rgba(99, 102, 241, 0.15);
+    transform: translateY(-1px);
+  }
+  .neo-btn-primary:active {
+    transform: scale(0.97);
+    background: var(--primary-pressed);
+  }
+
+  /* Neomorphic Input */
+  .neo-input {
+    background: var(--bg-input);
+    border-radius: var(--radius-input);
+    box-shadow: var(--shadow-pressed);
+    border: none;
+    padding: 0.875rem 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    transition: box-shadow 200ms ease;
+    outline: none;
+    width: 100%;
+  }
+  .neo-input::placeholder {
+    color: var(--text-muted);
+  }
+  .neo-input:focus {
+    box-shadow: inset 3px 3px 6px #c1c1c4, inset -3px -3px 6px #ffffff, 0 0 0 2px var(--primary-light);
+  }
+
+  /* Progress Bar */
+  .neo-progress {
+    background: var(--bg-input);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-pressed);
+    height: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .neo-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-pill);
+    transition: width 600ms ease-out;
+    position: relative;
+  }
+  .neo-progress-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-pill);
+    box-shadow: inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.2);
+  }
+
+  /* Skeleton Shimmer */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--bg-secondary) 25%,
+      var(--bg-card) 50%,
+      var(--bg-secondary) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 8px;
+  }
+
+  /* Money Font */
+  .font-money {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Toast Slide In */
+  .toast-enter {
+    animation: toastSlideIn 300ms ease-out forwards;
+  }
+  @keyframes toastSlideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* Page Fade In */
+  .page-fade-in {
+    animation: pageFadeIn 300ms ease-out;
+  }
+  @keyframes pageFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Selection */
+::selection {
+  background: var(--primary-light);
+  color: var(--primary);
+}
