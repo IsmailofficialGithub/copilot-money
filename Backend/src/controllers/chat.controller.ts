@@ -32,35 +32,44 @@ export const createChat = asyncHandler(async (req: AuthenticatedRequest, res: Re
     const query_embedding = embeddingResponse.data[0].embedding;
 
     // 2. Query Supabase pgvector using the match_documents RPC
-    const { data: documents, error } = await supabase.rpc('match_documents', {
+    const { data: documents, error: vectorError } = await supabase.rpc('match_documents', {
       query_embedding,
-      match_threshold: 0.5, // lower threshold to ensure matches
+      match_threshold: 0.5,
       match_count: 5,
       p_user_id: user_id,
     });
 
-    if (error) {
-      console.error('Vector search error:', error);
-    }
+    // Fetch the user's actual financial data
+    const { data: recentTxns } = await supabase.from('transactions').select('date, amount, merchant_name, category').eq('user_id', user_id).order('date', { ascending: false }).limit(50);
+    const { data: budgets } = await supabase.from('budgets').select('category, amount, period').eq('user_id', user_id);
 
     let contextText = '';
     if (documents && documents.length > 0) {
-      contextText = documents.map((doc: any) => doc.content).join('\n---\n');
+      contextText += "Uploaded Receipts & Documents:\n" + documents.map((doc: any) => doc.content).join('\n---\n') + "\n\n";
+    }
+
+    if (recentTxns && recentTxns.length > 0) {
+      contextText += "Recent Transactions:\n" + JSON.stringify(recentTxns) + "\n\n";
+    }
+
+    if (budgets && budgets.length > 0) {
+      contextText += "Current Budgets:\n" + JSON.stringify(budgets) + "\n\n";
     }
 
     // 3. Generate response using OpenAI
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: `You are Revonix, an AI financial assistant. You help users manage their personal finances. 
-Answer the user's questions based ONLY on the provided context (their uploaded receipts, documents, etc).
+          content: `You are Revonix, an expert AI financial assistant. You help users manage their personal finances. 
+Answer the user's questions based ONLY on the provided context, which includes their uploaded receipts, recent transactions, and budgets.
+If the user asks about their spending, summarize the transactions provided.
 If the context does not contain the answer, politely say you don't have that information.
-Keep responses concise and formatted cleanly with markdown.
+Keep responses concise, friendly, and formatted cleanly with markdown.
 
 Context:
-${contextText || "No relevant documents found."}
+${contextText || "No relevant financial data found yet."}
 `
         },
         {

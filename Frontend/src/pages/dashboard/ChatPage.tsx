@@ -5,6 +5,7 @@ import { useStore } from '@/store/useStore';
 import { useRequireAuth } from '@/hooks/useAuth';
 import type { ChatMessage } from '@/types';
 import { sendMessage, uploadReceipt } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
 
 const suggestions = [
   'Summarise my spending this month',
@@ -179,7 +180,13 @@ export const ChatPage = () => {
                 }`}
                 style={msg.role === 'assistant' ? { boxShadow: 'var(--shadow-soft)' } : {}}
               >
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-[var(--bg-secondary)]">
+                  {msg.role === 'user' ? (
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  ) : (
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  )}
+                </div>
                 {msg.toolsUsed && msg.toolsUsed.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-[var(--bg-secondary)]/50 flex items-center gap-1.5">
                     <span className="text-[10px] text-[var(--text-muted)]">
