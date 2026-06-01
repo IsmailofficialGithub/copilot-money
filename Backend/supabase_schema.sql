@@ -1,11 +1,7 @@
 -- 0. Create the custom schema
 CREATE SCHEMA IF NOT EXISTS copilot_money;
 
--- Grant usage to all necessary Supabase roles so the API and Auth triggers can access it
-GRANT USAGE ON SCHEMA copilot_money TO postgres, anon, authenticated, service_role, supabase_auth_admin;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA copilot_money TO postgres, anon, authenticated, service_role, supabase_auth_admin;
-GRANT ALL PRIVILEGES ON ALL ROUTINES IN SCHEMA copilot_money TO postgres, anon, authenticated, service_role, supabase_auth_admin;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA copilot_money TO postgres, anon, authenticated, service_role, supabase_auth_admin;
+
 
 -- 1. Create user_profiles table
 CREATE TABLE IF NOT EXISTS copilot_money.user_profiles (
@@ -15,6 +11,11 @@ CREATE TABLE IF NOT EXISTS copilot_money.user_profiles (
   avatar_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Force add columns in case the table was created previously without them
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 ALTER TABLE copilot_money.user_profiles ENABLE ROW LEVEL SECURITY;
 
@@ -26,9 +27,12 @@ DROP POLICY IF EXISTS "Users can update own profile" ON copilot_money.user_profi
 CREATE POLICY "Users can update own profile" ON copilot_money.user_profiles
   FOR UPDATE USING (auth.uid() = id);
 
--- 2. Create the Trigger for new users
-CREATE OR REPLACE FUNCTION copilot_money.handle_new_user() 
-RETURNS TRIGGER AS $$
+-- 2. Create the Trigger for new users (Function goes in public schema to avoid Supabase Auth permission issues)
+CREATE OR REPLACE FUNCTION public.handle_new_user() 
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public, copilot_money
+AS $$
 BEGIN
   INSERT INTO copilot_money.user_profiles (id, email, display_name, avatar_url)
   VALUES (
@@ -40,14 +44,14 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Drop trigger if exists to prevent errors
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE copilot_money.handle_new_user();
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- 3. Create transactions table
 CREATE TABLE IF NOT EXISTS copilot_money.transactions (
