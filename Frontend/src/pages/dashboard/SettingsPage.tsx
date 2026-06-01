@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/shared/DashboardLayout';
 import { User, Bell, Download, Trash2, AlertTriangle, ChevronRight, Lock, Moon } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
+import { supabase, resetPassword } from '@/lib/supabase';
+import {
+  fetchSettings,
+  updateSettings,
+  exportData,
+  deleteAllTransactions,
+  deleteAccount,
+} from '@/lib/api';
 
 export const SettingsPage = () => {
   const { user } = useAuth();
   const { theme, setTheme, addToast } = useStore();
 
+  const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [editingName, setEditingName] = useState(false);
   const [currency, setCurrency] = useState('USD');
@@ -22,32 +30,150 @@ export const SettingsPage = () => {
   const [deleteType, setDeleteType] = useState<'transactions' | 'account'>('transactions');
   const [deleteText, setDeleteText] = useState('');
 
+  // Fetch settings from API on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchSettings();
+        setDisplayName(data.displayName);
+        setCurrency(data.currency);
+        setPayDate(data.payDate);
+        setNotifications({
+          budgetAlerts: data.notifications?.budgetAlerts ?? true,
+          anomalyAlerts: data.notifications?.anomalyAlerts ?? true,
+          weeklySummary: data.notifications?.weeklySummary ?? false,
+        });
+        if (data.theme && data.theme !== theme) {
+          setTheme(data.theme as 'light' | 'dark');
+        }
+      } catch (err: any) {
+        console.error('Failed to load backend settings, using local defaults', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      loadSettings();
+    }
+  }, [user]);
+
   const handleUpdateName = async () => {
     try {
       await supabase.auth.updateUser({ data: { display_name: displayName } });
+      await updateSettings({ displayName });
       addToast({ type: 'success', message: 'Profile updated!' });
       setEditingName(false);
-    } catch {
-      addToast({ type: 'success', message: 'Profile updated!' });
-      setEditingName(false);
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to update profile' });
     }
   };
 
-  const handleExport = () => {
-    addToast({ type: 'success', message: 'Data export started!' });
+  const handleChangePassword = async () => {
+    if (!user?.email) return;
+    try {
+      await resetPassword(user.email);
+      addToast({ type: 'success', message: 'Password reset email sent!' });
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to send password reset email' });
+    }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleCurrencyChange = async (val: string) => {
+    setCurrency(val);
+    try {
+      await updateSettings({ currency: val });
+      addToast({ type: 'success', message: 'Currency updated!' });
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to update currency' });
+    }
+  };
+
+  const handlePayDateChange = async (val: number) => {
+    setPayDate(val);
+    try {
+      await updateSettings({ payDate: val });
+      addToast({ type: 'success', message: 'Pay date updated!' });
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to update pay date' });
+    }
+  };
+
+  const handleNotificationToggle = async (key: 'budgetAlerts' | 'anomalyAlerts' | 'weeklySummary') => {
+    const updatedNotifications = {
+      ...notifications,
+      [key]: !notifications[key],
+    };
+    setNotifications(updatedNotifications);
+    try {
+      await updateSettings({ notifications: updatedNotifications });
+      addToast({ type: 'success', message: 'Notification settings updated!' });
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to update notifications' });
+    }
+  };
+
+  const handleThemeChange = async (t: 'light' | 'dark') => {
+    setTheme(t);
+    try {
+      await updateSettings({ theme: t });
+    } catch (err: any) {
+      console.error('Failed to sync theme to backend', err);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      addToast({ type: 'success', message: 'Preparing your export...' });
+      const blob = await exportData();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'transactions.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      addToast({ type: 'success', message: 'Transactions exported successfully!' });
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to export data' });
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
     if (deleteText !== 'DELETE') {
       addToast({ type: 'error', message: 'Please type DELETE to confirm' });
       return;
     }
-    addToast({ type: 'success', message: deleteType === 'transactions' ? 'All transactions deleted!' : 'Account deleted!' });
-    setDeleteConfirm(false);
-    setDeleteText('');
+    try {
+      if (deleteType === 'transactions') {
+        await deleteAllTransactions();
+        addToast({ type: 'success', message: 'All transactions deleted!' });
+      } else {
+        await deleteAccount();
+        addToast({ type: 'success', message: 'Account deleted!' });
+        await supabase.auth.signOut();
+        window.location.href = '/#/login';
+      }
+      setDeleteConfirm(false);
+      setDeleteText('');
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Action failed' });
+    }
   };
 
   const currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-8 h-8 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -117,7 +243,7 @@ export const SettingsPage = () => {
 
             <div className="pt-2">
               <button
-                onClick={() => addToast({ type: 'success', message: 'Password reset email sent!' })}
+                onClick={handleChangePassword}
                 className="flex items-center gap-2 text-sm text-[var(--primary)] hover:underline"
               >
                 <Lock className="w-4 h-4" />
@@ -148,7 +274,7 @@ export const SettingsPage = () => {
               </div>
               <select
                 value={currency}
-                onChange={(e) => { setCurrency(e.target.value); addToast({ type: 'success', message: 'Currency updated!' }); }}
+                onChange={(e) => handleCurrencyChange(e.target.value)}
                 className="neo-input py-2 text-sm w-28"
               >
                 {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -165,7 +291,7 @@ export const SettingsPage = () => {
                 {(['light', 'dark'] as const).map((t) => (
                   <button
                     key={t}
-                    onClick={() => setTheme(t)}
+                    onClick={() => handleThemeChange(t)}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all flex items-center gap-1.5 ${
                       theme === t ? 'bg-[var(--bg-card)] text-[var(--primary)] shadow-sm' : 'text-[var(--text-muted)]'
                     }`}
@@ -185,7 +311,7 @@ export const SettingsPage = () => {
               </div>
               <select
                 value={payDate}
-                onChange={(e) => setPayDate(Number(e.target.value))}
+                onChange={(e) => handlePayDateChange(Number(e.target.value))}
                 className="neo-input py-2 text-sm w-20"
               >
                 {Array.from({ length: 31 }, (_, i) => (
@@ -207,7 +333,7 @@ export const SettingsPage = () => {
                     <p className="text-xs text-[var(--text-muted)]">{item.desc}</p>
                   </div>
                   <button
-                    onClick={() => setNotifications((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
+                    onClick={() => handleNotificationToggle(item.key)}
                     className={`w-11 h-6 rounded-full transition-colors relative ${
                       notifications[item.key] ? 'bg-[var(--primary)]' : 'bg-[var(--bg-secondary)]'
                     }`}
