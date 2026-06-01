@@ -4,6 +4,7 @@ import { Paperclip, Send, Bot, User, Loader2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useRequireAuth } from '@/hooks/useAuth';
 import type { ChatMessage } from '@/types';
+import { sendMessage, uploadReceipt } from '@/lib/api';
 
 const suggestions = [
   'Summarise my spending this month',
@@ -12,7 +13,6 @@ const suggestions = [
   'What was my biggest purchase?',
   'Show me unusual charges',
 ];
-
 
 export const ChatPage = () => {
   const { user } = useRequireAuth();
@@ -44,10 +44,11 @@ export const ChatPage = () => {
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    const userText = input.trim();
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: userText,
       createdAt: new Date().toISOString(),
     };
 
@@ -56,46 +57,34 @@ export const ChatPage = () => {
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setLoading(true);
 
-    // Simulate streaming response
-    const responses: Record<string, string> = {
-      'spending': 'Based on your data, you\'ve spent **$4,250.00** this month across 8 categories. Your top expenses are:\n\n1. **Groceries**: $890.50\n2. **Shopping**: $780.00\n3. **Dining**: $650.25\n\nThis is 11.8% higher than last month.',
-      'subscriptions': 'You have **6 active subscriptions** totaling **$89.99/month**:\n\n1. Netflix: $15.49\n2. Spotify: $10.99\n3. Gym: $29.99\n4. iCloud: $9.99\n5. Adobe: $14.99\n6. Amazon Prime: $8.99 (annual, $107.88)',
-      'budget': 'You have **1 budget over limit**:\n\n**Dining**: $650 / $500 (130%)\n\n**1 near limit**:\n- Entertainment: $190 / $200 (95%)\n\n**3 on track**:\n- Groceries: $320 / $400 (80%)\n- Transport: $180 / $300 (60%)\n- Shopping: $280 / $400 (70%)',
-      'purchase': 'Your biggest purchase this month was **$780.00 at Apple Store** on May 3rd for a new iPad Air.\n\nSecond largest was **$650.25** in total dining expenses, with your single biggest meal being **$89.50 at Nobu** on May 20th.',
-      'unusual': 'I found **1 unusual charge** this month:\n\n- **CRYPTO_VAULT_XYZ**: $89.00 on May 28th\n\nThis doesn\'t match your typical spending pattern. Would you like me to flag it for review?',
-    };
-
-    const lowerInput = input.toLowerCase();
-    let responseText = 'I can help you analyze your finances. Try asking about your spending, budgets, subscriptions, or transactions!';
-    
-    for (const [key, value] of Object.entries(responses)) {
-      if (lowerInput.includes(key)) {
-        responseText = value;
-        break;
+    try {
+      const response = await sendMessage({ message: userText });
+      
+      // Stream effect
+      const words = response.message.split(' ');
+      let currentText = '';
+      
+      for (let i = 0; i < words.length; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        currentText += (i > 0 ? ' ' : '') + words[i];
+        setStreamingText(currentText);
       }
+
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.message,
+        createdAt: new Date().toISOString(),
+        toolsUsed: response.toolsUsed || [],
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error: any) {
+      addToast({ type: 'error', message: error.message || 'Failed to send message' });
+    } finally {
+      setStreamingText('');
+      setLoading(false);
     }
-
-    // Stream effect
-    const words = responseText.split(' ');
-    let currentText = '';
-    
-    for (let i = 0; i < words.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-      currentText += (i > 0 ? ' ' : '') + words[i];
-      setStreamingText(currentText);
-    }
-
-    const assistantMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: responseText,
-      createdAt: new Date().toISOString(),
-      toolsUsed: ['sql_query'],
-    };
-
-    setMessages((prev) => [...prev, assistantMessage]);
-    setStreamingText('');
-    setLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -107,6 +96,39 @@ export const ChatPage = () => {
 
   const handleFileUpload = () => {
     fileInputRef.current?.click();
+  };
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      addToast({ type: 'success', message: 'Uploading receipt...' });
+      
+      await uploadReceipt(file);
+      
+      addToast({ type: 'success', message: 'Receipt uploaded and processed!' });
+      
+      // Optional: Inform the user in chat
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `I've successfully read your receipt for ${file.name}. What would you like to know about it?`,
+          createdAt: new Date().toISOString(),
+          toolsUsed: ['vision_ocr']
+        }
+      ]);
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to upload receipt' });
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   return (
@@ -225,11 +247,7 @@ export const ChatPage = () => {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  addToast({ type: 'success', message: 'Receipt uploaded! Processing...' });
-                }
-              }}
+              onChange={onFileChange}
             />
             <div className="flex-1 relative">
               <textarea

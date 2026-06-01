@@ -1,0 +1,79 @@
+-- 0. Create the custom schema
+CREATE SCHEMA IF NOT EXISTS copilot_money;
+
+-- 1. Create user_profiles table
+CREATE TABLE IF NOT EXISTS copilot_money.user_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name TEXT,
+  email TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE copilot_money.user_profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read own profile" ON copilot_money.user_profiles
+  FOR SELECT USING (auth.uid() = id);
+  
+CREATE POLICY "Users can update own profile" ON copilot_money.user_profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+-- 2. Create the Trigger for new users
+CREATE OR REPLACE FUNCTION copilot_money.handle_new_user() 
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO copilot_money.user_profiles (id, email, display_name, avatar_url)
+  VALUES (
+    new.id, 
+    new.email, 
+    COALESCE(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
+    new.raw_user_meta_data->>'avatar_url'
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Drop trigger if exists to prevent errors
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE copilot_money.handle_new_user();
+
+-- 3. Create transactions table
+CREATE TABLE IF NOT EXISTS copilot_money.transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES copilot_money.user_profiles(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  merchant_name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  description TEXT,
+  source TEXT DEFAULT 'manual',
+  is_recurring BOOLEAN DEFAULT false,
+  is_anomaly BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE copilot_money.transactions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own transactions" ON copilot_money.transactions
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 4. Create budgets table
+CREATE TABLE IF NOT EXISTS copilot_money.budgets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES copilot_money.user_profiles(id) ON DELETE CASCADE,
+  category TEXT NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  spent DECIMAL(12,2) DEFAULT 0.00,
+  period TEXT DEFAULT 'monthly',
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE copilot_money.budgets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own budgets" ON copilot_money.budgets
+  FOR ALL USING (auth.uid() = user_id);
