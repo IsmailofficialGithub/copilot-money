@@ -4,7 +4,7 @@ import { SkeletonTable } from '@/components/shared/Skeleton';
 import { Search, Upload, ChevronLeft, ChevronRight, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useRequireAuth } from '@/hooks/useAuth';
-import { fetchTransactions } from '@/lib/api';
+import { fetchTransactions, uploadCSV } from '@/lib/api';
 import { CATEGORIES, type Transaction } from '@/types';
 
 
@@ -72,13 +72,37 @@ export const TransactionsPage = () => {
               {filtered.length} transactions total
             </p>
           </div>
-          <button
+         <div className="flex gap-2 direction-column">
+           <div className="bg-[var(--bg-secondary)] p-4 rounded-xl text-left">
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => {
+                    const csvContent = "date,amount,merchant_name,category,description\n2023-10-01,-15.50,Uber,Transport,Ride to airport\n2023-10-02,-120.00,Walmart,Groceries,Weekly shopping\n2023-10-05,3000.00,Acme Corp,Salary,Monthly paycheck";
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', 'sample_transactions.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="text-xs text-[var(--primary)] hover:underline font-medium"
+                >
+                  Download Sample
+                </button>
+              </div>
+
+            </div>
+           <button
             onClick={() => setUploadModalOpen(true)}
             className="neo-btn-primary px-5 py-2.5 text-sm gap-2 inline-flex items-center"
           >
             <Upload className="w-4 h-4" />
             Upload CSV
           </button>
+         </div>
         </div>
 
         {/* Filter Bar */}
@@ -211,15 +235,32 @@ export const TransactionsPage = () => {
               Drag and drop your CSV file, or click to browse
             </p>
             <div
-              className="border-2 border-dashed border-[var(--bg-secondary)] rounded-2xl p-10 text-center hover:border-[var(--primary)]/40 transition-colors cursor-pointer"
+              className="border-2 border-dashed border-[var(--bg-secondary)] rounded-2xl p-8 text-center hover:border-[var(--primary)]/40 transition-colors cursor-pointer mb-6"
               onClick={() => {
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = '.csv';
-                input.onchange = (e: any) => {
-                  if (e.target.files?.[0]) {
-                    addToast({ type: 'success', message: `Uploaded ${e.target.files[0].name}! Processing...` });
-                    setUploadModalOpen(false);
+                input.onchange = async (e: any) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    try {
+                      setUploadModalOpen(false);
+                      setLoading(true);
+                      await uploadCSV(file);
+                      addToast({ type: 'success', message: `Uploaded ${file.name} successfully!` });
+                      // Trigger a reload
+                      setPage(1);
+                      setSearch('');
+                      setCategory('');
+                      const data = await fetchTransactions({ page: 1, limit: 10 });
+                      if (data.data) {
+                        setTransactions(data.data);
+                      }
+                    } catch (err: any) {
+                      addToast({ type: 'error', message: err.message || 'Failed to upload CSV' });
+                    } finally {
+                      setLoading(false);
+                    }
                   }
                 };
                 input.click();
@@ -229,10 +270,9 @@ export const TransactionsPage = () => {
               <p className="text-sm text-[var(--text-muted)]">
                 Click to select file
               </p>
-              <p className="text-xs text-[var(--text-muted)] mt-1">
-                Supports CSV format
-              </p>
             </div>
+
+           
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setUploadModalOpen(false)}

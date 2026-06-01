@@ -1,15 +1,61 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import asyncHandler from 'express-async-handler';
+import { supabase } from '../services/supabase.service';
+import { AuthenticatedRequest } from '../types/supabase.types';
 
-export const getBudgets = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ data: [] });
+export const getBudgets = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const { data, error } = await supabase
+    .from('budgets')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  res.json({ data: data || [] });
 });
-export const createBudgets = asyncHandler(async (req: Request, res: Response) => {
-  res.status(201).json({ id: '1', ...req.body });
+
+export const createBudgets = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const { category, amount, period } = req.body;
+
+  const { data, error } = await supabase
+    .from('budgets')
+    .insert([{ user_id: userId, category, amount, period }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  res.status(201).json(data);
 });
-export const updateBudgets = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ id: req.params.id, ...req.body });
+
+export const updateBudgets = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const budgetId = req.params.id;
+  const { category, amount, period } = req.body;
+
+  const { data, error } = await supabase
+    .from('budgets')
+    .update({ category, amount, period })
+    .eq('id', budgetId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  res.json(data);
 });
-export const deleteBudgets = asyncHandler(async (req: Request, res: Response) => {
+
+export const deleteBudgets = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const budgetId = req.params.id;
+
+  const { error } = await supabase
+    .from('budgets')
+    .delete()
+    .eq('id', budgetId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
   res.json({ success: true });
 });
