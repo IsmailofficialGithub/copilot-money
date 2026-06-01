@@ -9,6 +9,12 @@ CREATE TABLE IF NOT EXISTS copilot_money.user_profiles (
   display_name TEXT,
   email TEXT,
   avatar_url TEXT,
+  currency TEXT DEFAULT 'USD',
+  pay_date INT DEFAULT 1,
+  budget_alerts BOOLEAN DEFAULT true,
+  anomaly_alerts BOOLEAN DEFAULT true,
+  weekly_summary BOOLEAN DEFAULT false,
+  theme TEXT DEFAULT 'light',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -16,6 +22,12 @@ CREATE TABLE IF NOT EXISTS copilot_money.user_profiles (
 ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
 ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS pay_date INT DEFAULT 1;
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS budget_alerts BOOLEAN DEFAULT true;
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS anomaly_alerts BOOLEAN DEFAULT true;
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS weekly_summary BOOLEAN DEFAULT false;
+ALTER TABLE copilot_money.user_profiles ADD COLUMN IF NOT EXISTS theme TEXT DEFAULT 'light';
 
 ALTER TABLE copilot_money.user_profiles ENABLE ROW LEVEL SECURITY;
 
@@ -41,16 +53,24 @@ BEGIN
     COALESCE(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
     new.raw_user_meta_data->>'avatar_url'
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    display_name = COALESCE(EXCLUDED.display_name, copilot_money.user_profiles.display_name),
+    avatar_url = COALESCE(EXCLUDED.avatar_url, copilot_money.user_profiles.avatar_url);
   RETURN new;
 END;
 $$;
 
--- Drop trigger if exists to prevent errors
+-- Drop triggers if they exist to prevent errors
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+CREATE TRIGGER on_auth_user_updated
+  AFTER UPDATE ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- 3. Create transactions table

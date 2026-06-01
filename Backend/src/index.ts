@@ -11,6 +11,7 @@ import transactionsRoutes from './routes/transactions.routes';
 import receiptsRoutes from './routes/receipts.routes';
 import budgetsRoutes from './routes/budgets.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import settingsRoutes from './routes/settings.routes';
 import { csvWorker, csvQueue } from './services/queue.service';
 
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/v1/transactions', transactionsRoutes);
 app.use('/api/v1/receipts', receiptsRoutes);
 app.use('/api/v1/budgets', budgetsRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/settings', settingsRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
