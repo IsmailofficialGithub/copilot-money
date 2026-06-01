@@ -212,10 +212,10 @@ export const BudgetsPage = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-money text-lg font-bold text-[var(--text-primary)]">
-                      ${budget.spent.toFixed(0)}
+                      ${Number(budget.spent || 0).toFixed(0)}
                     </p>
                     <p className="text-xs text-[var(--text-muted)]">
-                      of ${budget.amount.toFixed(0)} this month
+                      of ${Number(budget.amount || 0).toFixed(0)} this month
                     </p>
                   </div>
                   <div className="text-right">
@@ -227,7 +227,7 @@ export const BudgetsPage = () => {
                     <p className={`text-xs font-medium mt-0.5 ${
                       budget.percentUsed >= 100 ? 'text-[var(--danger)]' : 'text-[var(--text-secondary)]'
                     }`}>
-                      {budget.percentUsed.toFixed(0)}%
+                      {Number(budget.percentUsed || 0).toFixed(0)}%
                     </p>
                   </div>
                 </div>
