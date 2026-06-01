@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "types": ["jest"]
   },
-  "include": ["src/**/*", "__tests__/**/*"]
+  "include": ["src/**/*"]
 }
