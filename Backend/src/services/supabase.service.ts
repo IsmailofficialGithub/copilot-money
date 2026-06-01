@@ -12,4 +12,8 @@ if (!supabaseUrl || !supabaseKey) {
 
 // Service role client bypasses Row Level Security.
 // Use this carefully on the backend to interact with the DB.
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: {
+    schema: 'copilot_money'
+  }
+});
