@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { getChat } from '../controllers/chat.controller';
 import { requireAuth } from '../middleware/auth.middleware';
+import { getChat, createChat } from '../controllers/chat.controller';
 
 const router = Router();
-
-router.get('/', requireAuth, getChat);
+router.use(requireAuth);
+router.get('/', getChat);
+router.post('/', createChat);
 
 export default router;

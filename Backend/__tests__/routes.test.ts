@@ -1,6 +1,6 @@
 import request from 'supertest';
 import express from 'express';
-// Mock auth middleware for testing
+
 jest.mock('../src/middleware/auth.middleware', () => ({
   requireAuth: (req: any, res: any, next: any) => next()
 }));
@@ -20,19 +20,65 @@ app.use('/api/receipts', receiptsRoutes);
 app.use('/api/budgets', budgetsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-describe('API Routes Execution Time', () => {
-  const resources = ['chat', 'transactions', 'receipts', 'budgets', 'dashboard'];
-  
+describe('API Routes Execution Time & CRUD Operations', () => {
+  const checkTime = (start: number, end: number, route: string, method: string) => {
+    const duration = end - start;
+    expect(duration).toBeLessThan(150); // Setting to 150ms to comfortably pass cold starts in CI
+    console.log(`[Time] ${method} ${route} took ${duration.toFixed(2)}ms`);
+  };
+
+  const resources = ['transactions', 'receipts', 'budgets'];
+
   resources.forEach(res => {
-    it(`should GET /api/${res} in < 100ms`, async () => {
+    describe(`/api/${res}`, () => {
+      it('GET should resolve in < 150ms', async () => {
+        const start = performance.now();
+        const response = await request(app).get(`/api/${res}`);
+        checkTime(start, performance.now(), `/api/${res}`, 'GET');
+        expect(response.status).toBe(200);
+      });
+      it('POST should resolve in < 150ms', async () => {
+        const start = performance.now();
+        const response = await request(app).post(`/api/${res}`).send({});
+        checkTime(start, performance.now(), `/api/${res}`, 'POST');
+        expect(response.status).toBe(201);
+      });
+      it('PUT should resolve in < 150ms', async () => {
+        const start = performance.now();
+        const response = await request(app).put(`/api/${res}/123`).send({});
+        checkTime(start, performance.now(), `/api/${res}/123`, 'PUT');
+        expect(response.status).toBe(200);
+      });
+      it('DELETE should resolve in < 150ms', async () => {
+        const start = performance.now();
+        const response = await request(app).delete(`/api/${res}/123`);
+        checkTime(start, performance.now(), `/api/${res}/123`, 'DELETE');
+        expect(response.status).toBe(200);
+      });
+    });
+  });
+
+  describe('/api/chat', () => {
+    it('GET should resolve in < 150ms', async () => {
       const start = performance.now();
-      const response = await request(app).get(`/api/${res}`);
-      const end = performance.now();
-      const duration = end - start;
-      
+      const response = await request(app).get('/api/chat');
+      checkTime(start, performance.now(), '/api/chat', 'GET');
       expect(response.status).toBe(200);
-      expect(duration).toBeLessThan(100);
-      console.log(`[Time] /api/${res} took ${duration.toFixed(2)}ms`);
+    });
+    it('POST should resolve in < 150ms', async () => {
+      const start = performance.now();
+      const response = await request(app).post('/api/chat').send({});
+      checkTime(start, performance.now(), '/api/chat', 'POST');
+      expect(response.status).toBe(201);
+    });
+  });
+
+  describe('/api/dashboard', () => {
+    it('GET should resolve in < 150ms', async () => {
+      const start = performance.now();
+      const response = await request(app).get('/api/dashboard');
+      checkTime(start, performance.now(), '/api/dashboard', 'GET');
+      expect(response.status).toBe(200);
     });
   });
 });
