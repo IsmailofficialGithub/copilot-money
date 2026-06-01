@@ -2,14 +2,14 @@ import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 
 export const getTransactions = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'GET transactions route' });
+  res.json({ data: [], total: 0, page: 1, totalPages: 1 });
 });
 export const createTransactions = asyncHandler(async (req: Request, res: Response) => {
-  res.status(201).json({ message: 'POST transactions route' });
+  res.status(201).json({ id: '1', ...req.body });
 });
 export const updateTransactions = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'PUT transactions route' });
+  res.json({ id: req.params.id, ...req.body });
 });
 export const deleteTransactions = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'DELETE transactions route' });
+  res.json({ success: true });
 });

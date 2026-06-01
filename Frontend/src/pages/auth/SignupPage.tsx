@@ -51,9 +51,14 @@ export const SignupPage = () => {
 
     setLoading(true);
     try {
-      await signUp(email, password, displayName);
-      setSuccess(true);
-      addToast({ type: 'success', message: 'Account created! Please check your email.' });
+      const data = await signUp(email, password, displayName);
+      if (data.session) {
+        addToast({ type: 'success', message: 'Account created successfully!' });
+        // The useRedirectIfAuth hook will automatically route to /dashboard
+      } else {
+        setSuccess(true);
+        addToast({ type: 'success', message: 'Account created! Please check your email.' });
+      }
     } catch (err: any) {
       addToast({ type: 'error', message: err.message || 'Failed to create account' });
     } finally {

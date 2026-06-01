@@ -2,14 +2,14 @@ import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 
 export const getBudgets = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'GET budgets route' });
+  res.json({ data: [] });
 });
 export const createBudgets = asyncHandler(async (req: Request, res: Response) => {
-  res.status(201).json({ message: 'POST budgets route' });
+  res.status(201).json({ id: '1', ...req.body });
 });
 export const updateBudgets = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'PUT budgets route' });
+  res.json({ id: req.params.id, ...req.body });
 });
 export const deleteBudgets = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'DELETE budgets route' });
+  res.json({ success: true });
 });

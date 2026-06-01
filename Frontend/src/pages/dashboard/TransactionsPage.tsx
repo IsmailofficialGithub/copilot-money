@@ -7,24 +7,12 @@ import { useRequireAuth } from '@/hooks/useAuth';
 import { fetchTransactions } from '@/lib/api';
 import { CATEGORIES, type Transaction } from '@/types';
 
-const demoTransactions: Transaction[] = Array.from({ length: 25 }, (_, i) => ({
-  id: `txn-${i + 1}`,
-  date: `2026-05-${String(28 - i).padStart(2, '0')}`,
-  amount: -(Math.random() * 200 + 10),
-  description: ['AMZN*', 'UBER*', 'WHOLEFDS', 'STARBUCKS', 'SHELL OIL', 'NETFLIX', 'SPOTIFY', 'TRADERJOES'][i % 8] + Math.floor(Math.random() * 99999),
-  merchantName: ['Amazon', 'Uber', 'Whole Foods', 'Starbucks', 'Shell', 'Netflix', 'Spotify', 'Trader Joe\'s'][i % 8],
-  category: ['Shopping', 'Transport', 'Groceries', 'Dining', 'Transport', 'Subscriptions', 'Subscriptions', 'Groceries'][i % 8],
-  isRecurring: i % 4 === 0,
-  isAnomaly: i === 0,
-  source: 'csv',
-  createdAt: '',
-}));
 
 export const TransactionsPage = () => {
   useRequireAuth();
   const { addToast } = useStore();
 
-  const [transactions, setTransactions] = useState<Transaction[]>(demoTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
@@ -225,8 +213,16 @@ export const TransactionsPage = () => {
             <div
               className="border-2 border-dashed border-[var(--bg-secondary)] rounded-2xl p-10 text-center hover:border-[var(--primary)]/40 transition-colors cursor-pointer"
               onClick={() => {
-                addToast({ type: 'success', message: 'CSV uploaded! Processing...' });
-                setUploadModalOpen(false);
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.csv';
+                input.onchange = (e: any) => {
+                  if (e.target.files?.[0]) {
+                    addToast({ type: 'success', message: `Uploaded ${e.target.files[0].name}! Processing...` });
+                    setUploadModalOpen(false);
+                  }
+                };
+                input.click();
               }}
             >
               <Upload className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" />

@@ -13,26 +13,11 @@ const suggestions = [
   'Show me unusual charges',
 ];
 
-const demoMessages: ChatMessage[] = [
-  {
-    id: '1',
-    role: 'user',
-    content: 'How much did I spend on groceries this month?',
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: '2',
-    role: 'assistant',
-    content: 'You spent $890.50 on groceries this month, which is 12% more than last month ($794.40). Your biggest grocery expense was $156.80 at Whole Foods on May 15th.\n\nWould you like me to break this down by store or show how this compares to your $400 monthly budget?',
-    createdAt: new Date(Date.now() - 3500000).toISOString(),
-    toolsUsed: ['sql_query'],
-  },
-];
 
 export const ChatPage = () => {
   const { user } = useRequireAuth();
   const { addToast } = useStore();
-  const [messages, setMessages] = useState<ChatMessage[]>(demoMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');

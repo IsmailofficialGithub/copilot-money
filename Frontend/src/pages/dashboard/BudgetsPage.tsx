@@ -7,20 +7,12 @@ import { useRequireAuth } from '@/hooks/useAuth';
 import { fetchBudgets, createBudget, updateBudget, deleteBudget } from '@/lib/api';
 import { CATEGORIES, type Budget, type BudgetPeriod } from '@/types';
 
-const demoBudgets: Budget[] = [
-  { id: '1', category: 'Groceries', amount: 400, spent: 320, period: 'monthly', percentUsed: 80, active: true, createdAt: '' },
-  { id: '2', category: 'Dining', amount: 500, spent: 650, period: 'monthly', percentUsed: 130, active: true, createdAt: '' },
-  { id: '3', category: 'Transport', amount: 300, spent: 180, period: 'monthly', percentUsed: 60, active: true, createdAt: '' },
-  { id: '4', category: 'Entertainment', amount: 200, spent: 190, period: 'monthly', percentUsed: 95, active: true, createdAt: '' },
-  { id: '5', category: 'Shopping', amount: 400, spent: 280, period: 'monthly', percentUsed: 70, active: true, createdAt: '' },
-  { id: '6', category: 'Utilities', amount: 250, spent: 220, period: 'monthly', percentUsed: 88, active: true, createdAt: '' },
-];
 
 export const BudgetsPage = () => {
   useRequireAuth();
   const { addToast } = useStore();
 
-  const [budgets, setBudgets] = useState<Budget[]>(demoBudgets);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);

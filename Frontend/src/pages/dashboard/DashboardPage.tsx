@@ -29,36 +29,7 @@ export const DashboardPage = () => {
         const data = await fetchDashboard();
         setDashboardData(data);
       } catch (err: any) {
-        // Use demo data if API fails
-        const demoData = {
-          totalSpent: 4250.0,
-          previousMonthSpent: 3800.0,
-          percentChange: 11.8,
-          topCategory: { name: 'Groceries', amount: 890.5 },
-          subscriptions: { count: 6, monthlyTotal: 89.99 },
-          budgetStatus: { onTrack: 3, warning: 1, over: 1 },
-          spendingByCategory: [
-            { category: 'Groceries', amount: 890.5 },
-            { category: 'Transport', amount: 320.0 },
-            { category: 'Dining', amount: 650.25 },
-            { category: 'Shopping', amount: 780.0 },
-            { category: 'Entertainment', amount: 420.5 },
-            { category: 'Utilities', amount: 520.0 },
-            { category: 'Subscriptions', amount: 89.99 },
-            { category: 'Other', amount: 578.76 },
-          ],
-          monthlyTrend: [
-            { month: 'Jan', amount: 3200 },
-            { month: 'Feb', amount: 3500 },
-            { month: 'Mar', amount: 3100 },
-            { month: 'Apr', amount: 3800 },
-            { month: 'May', amount: 4250 },
-          ],
-          anomalies: [
-            { id: '1', merchant: 'CRYPTO_VAULT_XYZ', amount: 89.0, date: '2026-05-28' },
-          ],
-        };
-        setDashboardData(demoData);
+        setDashboardData(null);
       } finally {
         setDashboardLoading(false);
       }
@@ -102,13 +73,7 @@ export const DashboardPage = () => {
     );
   }
 
-  const demoBudgets = [
-    { id: '1', category: 'Groceries', amount: 400, spent: 320, period: 'monthly' as const, percentUsed: 80, active: true, createdAt: '' },
-    { id: '2', category: 'Dining', amount: 500, spent: 650, period: 'monthly' as const, percentUsed: 130, active: true, createdAt: '' },
-    { id: '3', category: 'Transport', amount: 300, spent: 180, period: 'monthly' as const, percentUsed: 60, active: true, createdAt: '' },
-    { id: '4', category: 'Entertainment', amount: 200, spent: 190, period: 'monthly' as const, percentUsed: 95, active: true, createdAt: '' },
-    { id: '5', category: 'Shopping', amount: 400, spent: 280, period: 'monthly' as const, percentUsed: 70, active: true, createdAt: '' },
-  ];
+  const demoBudgets: any[] = [];
 
   return (
     <DashboardLayout>

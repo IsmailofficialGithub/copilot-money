@@ -2,14 +2,14 @@ import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 
 export const getReceipts = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'GET receipts route' });
+  res.json({ data: [] });
 });
 export const createReceipts = asyncHandler(async (req: Request, res: Response) => {
-  res.status(201).json({ message: 'POST receipts route' });
+  res.status(201).json({ success: true, fileUrl: 'http://example.com/receipt.jpg' });
 });
 export const updateReceipts = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'PUT receipts route' });
+  res.json({ id: req.params.id, ...req.body });
 });
 export const deleteReceipts = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ message: 'DELETE receipts route' });
+  res.json({ success: true });
 });

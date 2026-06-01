@@ -4,11 +4,16 @@ import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
 import type { User } from '@/types';
 
+let authInitialized = false;
+
 export const useAuth = () => {
   const navigate = useNavigate();
   const { user, setUser, setSession, authLoading, setAuthLoading, addToast } = useStore();
 
   useEffect(() => {
+    if (authInitialized) return;
+    authInitialized = true;
+
     // Check active session on mount
     const checkSession = async () => {
       try {
@@ -57,7 +62,10 @@ export const useAuth = () => {
       setAuthLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      // Don't unsubscribe on hook unmount because we only subscribe once globally
+      // subscription.unsubscribe(); 
+    };
   }, [setUser, setSession, setAuthLoading]);
 
   const handleSignOut = async () => {
