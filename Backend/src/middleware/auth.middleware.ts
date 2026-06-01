@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../services/supabase.service';
-
-export interface AuthenticatedRequest extends Request {
-  user?: any;
-}
+import { AuthenticatedRequest } from '../types/supabase.types';
 
 export const requireAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
