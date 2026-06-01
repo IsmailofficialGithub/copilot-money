@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/shared/DashboardLayout';
 import { SkeletonTable } from '@/components/shared/Skeleton';
-import { Search, Upload, ChevronLeft, ChevronRight, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { Search, Upload, ChevronLeft, ChevronRight, ArrowUpDown, AlertTriangle, Plus } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useRequireAuth } from '@/hooks/useAuth';
-import { fetchTransactions, uploadCSV } from '@/lib/api';
+import { fetchTransactions, uploadCSV, createTransaction } from '@/lib/api';
 import { CATEGORIES, type Transaction } from '@/types';
 
 
@@ -20,6 +20,8 @@ export const TransactionsPage = () => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newTxn, setNewTxn] = useState({ date: new Date().toISOString().split('T')[0], merchantName: '', amount: '', category: CATEGORIES[0], description: '', isRecurring: false });
   const limit = 10;
 
   useEffect(() => {
@@ -96,8 +98,15 @@ export const TransactionsPage = () => {
 
             </div>
            <button
-            onClick={() => setUploadModalOpen(true)}
+            onClick={() => setCreateModalOpen(true)}
             className="neo-btn-primary px-5 py-2.5 text-sm gap-2 inline-flex items-center"
+          >
+            <Plus className="w-4 h-4" />
+            Add Transaction
+          </button>
+           <button
+            onClick={() => setUploadModalOpen(true)}
+            className="neo-btn px-5 py-2.5 text-sm gap-2 inline-flex items-center"
           >
             <Upload className="w-4 h-4" />
             Upload CSV
@@ -281,6 +290,64 @@ export const TransactionsPage = () => {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Create Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="neo-card p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Add Transaction</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setLoading(true);
+              try {
+                await createTransaction({
+                  date: newTxn.date,
+                  merchantName: newTxn.merchantName,
+                  amount: parseFloat(newTxn.amount),
+                  category: newTxn.category,
+                  description: newTxn.description,
+                  isRecurring: newTxn.isRecurring,
+                  source: 'manual'
+                });
+                addToast({ type: 'success', message: 'Transaction added successfully!' });
+                setCreateModalOpen(false);
+                setPage(1);
+                const data = await fetchTransactions({ page: 1, limit: 10 });
+                if (data.data) setTransactions(data.data);
+                setNewTxn({ date: new Date().toISOString().split('T')[0], merchantName: '', amount: '', category: CATEGORIES[0], description: '', isRecurring: false });
+              } catch (err: any) {
+                addToast({ type: 'error', message: err.message || 'Failed to add transaction' });
+              } finally {
+                setLoading(false);
+              }
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Date</label>
+                  <input type="date" required value={newTxn.date} onChange={(e) => setNewTxn({...newTxn, date: e.target.value})} className="neo-input w-full py-2 px-3 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Merchant</label>
+                  <input type="text" required placeholder="Walmart" value={newTxn.merchantName} onChange={(e) => setNewTxn({...newTxn, merchantName: e.target.value})} className="neo-input w-full py-2 px-3 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Amount</label>
+                  <input type="number" required step="0.01" placeholder="-120.00" value={newTxn.amount} onChange={(e) => setNewTxn({...newTxn, amount: e.target.value})} className="neo-input w-full py-2 px-3 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Category</label>
+                  <select value={newTxn.category} onChange={(e) => setNewTxn({...newTxn, category: e.target.value})} className="neo-input w-full py-2 px-3 text-sm">
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button type="button" onClick={() => setCreateModalOpen(false)} className="neo-btn flex-1 py-2 text-sm">Cancel</button>
+                <button type="submit" disabled={loading} className="neo-btn-primary flex-1 py-2 text-sm disabled:opacity-50">Save</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -91,3 +91,39 @@ ALTER TABLE copilot_money.budgets ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can CRUD own budgets" ON copilot_money.budgets;
 CREATE POLICY "Users can CRUD own budgets" ON copilot_money.budgets
   FOR ALL USING (auth.uid() = user_id);
+
+-- 5. Create chat_conversations table
+CREATE TABLE IF NOT EXISTS copilot_money.chat_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES copilot_money.user_profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT 'New Conversation',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE copilot_money.chat_conversations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can CRUD own conversations" ON copilot_money.chat_conversations;
+CREATE POLICY "Users can CRUD own conversations" ON copilot_money.chat_conversations
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 6. Create chat_messages table
+CREATE TABLE IF NOT EXISTS copilot_money.chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES copilot_money.chat_conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  tools_used JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE copilot_money.chat_messages ENABLE ROW LEVEL SECURITY;
+
+-- Note: user_id is not directly on chat_messages, so we join with chat_conversations for RLS
+DROP POLICY IF EXISTS "Users can CRUD own messages" ON copilot_money.chat_messages;
+CREATE POLICY "Users can CRUD own messages" ON copilot_money.chat_messages
+  FOR ALL USING (
+    conversation_id IN (
+      SELECT id FROM copilot_money.chat_conversations WHERE user_id = auth.uid()
+    )
+  );

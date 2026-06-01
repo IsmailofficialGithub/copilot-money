@@ -7,10 +7,39 @@ import { AuthenticatedRequest } from '../types/supabase.types';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const getChat = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  
   if (req.path === '/conversations') {
-    res.json({ data: [] });
+    const { data, error } = await supabase
+      .from('chat_conversations')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    res.json({ data: data || [] });
   } else {
-    res.json({ messages: [] });
+    const conversationId = req.query.conversationId as string;
+    if (!conversationId || conversationId === 'default') {
+      res.json({ messages: [] });
+      return;
+    }
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    
+    // Map to frontend ChatMessage format
+    const formattedMessages = data.map((msg: any) => ({
+      id: msg.id,
+      role: msg.role,
+      content: msg.content,
+      createdAt: msg.created_at,
+      toolsUsed: msg.tools_used
+    }));
+    
+    res.json({ messages: formattedMessages });
   }
 });
 
@@ -56,7 +85,27 @@ export const createChat = asyncHandler(async (req: AuthenticatedRequest, res: Re
       contextText += "Current Budgets:\n" + JSON.stringify(budgets) + "\n\n";
     }
 
-    // 3. Generate response using OpenAI
+    // 3. Persistent Chat Logistics
+    let activeConversationId = req.body.conversationId;
+    
+    // Create new conversation if none provided
+    if (!activeConversationId || activeConversationId === 'default') {
+      const { data: convData, error: convError } = await supabase
+        .from('chat_conversations')
+        .insert([{ user_id: user_id, title: message.substring(0, 40) + (message.length > 40 ? '...' : '') }])
+        .select()
+        .single();
+      
+      if (convError) throw convError;
+      activeConversationId = convData.id;
+    }
+
+    // Insert user message
+    await supabase
+      .from('chat_messages')
+      .insert([{ conversation_id: activeConversationId, role: 'user', content: message }]);
+
+    // 4. Generate response using OpenAI
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -80,11 +129,20 @@ ${contextText || "No relevant financial data found yet."}
     });
 
     const responseText = completion.choices[0].message.content;
+    const toolsUsed = documents && documents.length > 0 ? ['vector_search'] : [];
+
+    // Insert assistant message
+    await supabase
+      .from('chat_messages')
+      .insert([{ conversation_id: activeConversationId, role: 'assistant', content: responseText, tools_used: toolsUsed }]);
+
+    // Update conversation timestamp
+    await supabase.from('chat_conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConversationId);
 
     res.status(201).json({ 
       message: responseText,
-      conversationId: req.body.conversationId || 'default',
-      toolsUsed: documents && documents.length > 0 ? ['vector_search'] : []
+      conversationId: activeConversationId,
+      toolsUsed: toolsUsed
     });
   } catch (error: any) {
     console.error('Chat error:', error);

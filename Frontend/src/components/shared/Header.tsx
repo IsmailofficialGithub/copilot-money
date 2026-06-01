@@ -1,4 +1,4 @@
-import { Bell, Moon, Sun, Search } from 'lucide-react';
+import { Moon, Sun, Search } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
@@ -50,16 +50,7 @@ export const Header = () => {
           )}
         </button>
 
-        {/* Notifications */}
-        <button
-          className="neo-btn w-10 h-10 p-0 rounded-xl relative"
-          title="Notifications"
-        >
-          <Bell className="w-4 h-4 text-[var(--text-secondary)]" />
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[var(--danger)] rounded-full text-[10px] text-white flex items-center justify-center font-semibold">
-            2
-          </span>
-        </button>
+
 
         {/* User */}
         <div className="flex items-center gap-3 ml-2 pl-4 border-l border-[var(--bg-secondary)]">

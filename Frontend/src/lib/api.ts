@@ -70,6 +70,13 @@ export const fetchTransactions = async (filters: TransactionFilters = {}): Promi
   return apiCall<TransactionsResponse>(`/transactions?${params.toString()}`);
 };
 
+export const createTransaction = async (data: Omit<Transaction, 'id' | 'createdAt' | 'isAnomaly'>) => {
+  return apiCall<Transaction>('/transactions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
 export const uploadCSV = async (file: File): Promise<CSVUploadResult> => {
   const formData = new FormData();
   formData.append('file', file);

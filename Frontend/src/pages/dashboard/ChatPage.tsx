@@ -4,7 +4,7 @@ import { Paperclip, Send, Bot, User, Loader2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useRequireAuth } from '@/hooks/useAuth';
 import type { ChatMessage } from '@/types';
-import { sendMessage, uploadReceipt } from '@/lib/api';
+import { sendMessage, uploadReceipt, fetchConversations, fetchConversation } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 
 const suggestions = [
@@ -21,7 +21,9 @@ export const ChatPage = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [streamingText, setStreamingText] = useState('');
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +35,27 @@ export const ChatPage = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, streamingText]);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const { data } = await fetchConversations();
+        if (data && data.length > 0) {
+          const latestId = data[0].id;
+          setConversationId(latestId);
+          const { messages: history } = await fetchConversation(latestId);
+          if (history) {
+            setMessages(history);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load chat history:', err);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    loadHistory();
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -59,7 +82,11 @@ export const ChatPage = () => {
     setLoading(true);
 
     try {
-      const response = await sendMessage({ message: userText });
+      const response = await sendMessage({ message: userText, conversationId });
+      
+      if (response.conversationId) {
+        setConversationId(response.conversationId);
+      }
       
       // Stream effect
       const words = response.message.split(' ');
@@ -137,7 +164,12 @@ export const ChatPage = () => {
       <div className="h-[calc(100vh-7rem)] flex flex-col -mx-6 -mt-6">
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {messages.length === 0 && !loading && (
+          {initialLoading && (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
+            </div>
+          )}
+          {messages.length === 0 && !loading && !initialLoading && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="w-16 h-16 rounded-2xl bg-[var(--primary-light)] flex items-center justify-center mb-4">
                 <Bot className="w-8 h-8 text-[var(--primary)]" />
