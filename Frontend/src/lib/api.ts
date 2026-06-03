@@ -51,6 +51,36 @@ const apiCall = async <T>(endpoint: string, options: RequestInit = {}): Promise<
   return res.json();
 };
 
+type ApiTransaction = Transaction & {
+  merchant_name?: string;
+  is_recurring?: boolean;
+  is_anomaly?: boolean;
+  created_at?: string;
+};
+
+const normalizeTransaction = (txn: ApiTransaction): Transaction => ({
+  id: txn.id,
+  date: txn.date,
+  amount: Number(txn.amount),
+  description: txn.description || '',
+  merchantName: txn.merchantName || txn.merchant_name || 'Unknown',
+  category: txn.category || 'Other',
+  isRecurring: Boolean(txn.isRecurring ?? txn.is_recurring),
+  isAnomaly: Boolean(txn.isAnomaly ?? txn.is_anomaly),
+  source: txn.source || 'manual',
+  createdAt: txn.createdAt || txn.created_at || '',
+});
+
+const toTransactionPayload = (txn: Omit<Transaction, 'id' | 'createdAt' | 'isAnomaly'>) => ({
+  date: txn.date,
+  amount: txn.amount,
+  merchant_name: txn.merchantName,
+  category: txn.category,
+  description: txn.description,
+  is_recurring: txn.isRecurring,
+  source: txn.source,
+});
+
 // ========== Dashboard ==========
 export const fetchDashboard = async (): Promise<DashboardData> => {
   return apiCall<DashboardData>('/dashboard');
@@ -68,14 +98,19 @@ export const fetchTransactions = async (filters: TransactionFilters = {}): Promi
   if (filters.minAmount) params.set('minAmount', String(filters.minAmount));
   if (filters.maxAmount) params.set('maxAmount', String(filters.maxAmount));
   
-  return apiCall<TransactionsResponse>(`/transactions?${params.toString()}`);
+  const response = await apiCall<TransactionsResponse>(`/transactions?${params.toString()}`);
+  return {
+    ...response,
+    data: response.data.map((txn) => normalizeTransaction(txn as ApiTransaction)),
+  };
 };
 
 export const createTransaction = async (data: Omit<Transaction, 'id' | 'createdAt' | 'isAnomaly'>) => {
-  return apiCall<Transaction>('/transactions', {
+  const transaction = await apiCall<ApiTransaction>('/transactions', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify(toTransactionPayload(data)),
   });
+  return normalizeTransaction(transaction);
 };
 
 export const uploadCSV = async (file: File): Promise<CSVUploadResult> => {
@@ -140,6 +175,12 @@ export const fetchConversation = async (conversationId: string): Promise<{ messa
 
 export const fetchConversations = async (): Promise<{ data: ChatConversation[] }> => {
   return apiCall<{ data: ChatConversation[] }>('/chat/conversations');
+};
+
+export const deleteConversation = async (conversationId: string) => {
+  return apiCall(`/chat/${conversationId}`, {
+    method: 'DELETE',
+  });
 };
 
 // ========== Receipts ==========

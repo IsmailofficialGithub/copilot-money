@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { DashboardLayout } from '@/components/shared/DashboardLayout';
-import { Paperclip, Send, Bot, User, Loader2 } from 'lucide-react';
+import { Paperclip, Send, Bot, User, Loader2, Trash2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useRequireAuth } from '@/hooks/useAuth';
 import type { ChatMessage } from '@/types';
-import { sendMessage, uploadReceipt, fetchConversations, fetchConversation } from '@/lib/api';
+import { sendMessage, uploadReceipt, fetchConversations, fetchConversation, deleteConversation } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 
 const suggestions = [
@@ -159,9 +159,45 @@ export const ChatPage = () => {
     }
   };
 
+  const handleDeleteChat = async () => {
+    if (loading) return;
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+    const confirmed = window.confirm('Delete this chat history?');
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await deleteConversation(conversationId);
+      setConversationId(null);
+      setMessages([]);
+      addToast({ type: 'success', message: 'Chat deleted!' });
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to delete chat' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="h-[calc(100vh-7rem)] flex flex-col -mx-6 -mt-6">
+        <div className="px-6 py-3 border-b border-[var(--bg-secondary)] bg-[var(--bg-primary)] flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-[var(--text-primary)]">Chat</h1>
+            <p className="text-xs text-[var(--text-muted)]">Ask about your transactions, budgets, and receipts</p>
+          </div>
+          <button
+            onClick={handleDeleteChat}
+            disabled={loading || messages.length === 0}
+            className="neo-btn w-10 h-10 p-0 rounded-xl disabled:opacity-40"
+            title="Delete chat"
+          >
+            <Trash2 className="w-4 h-4 text-[var(--danger)]" />
+          </button>
+        </div>
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {initialLoading && (

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/shared/DashboardLayout';
 import { SkeletonTable } from '@/components/shared/Skeleton';
-import { Search, Upload, ChevronLeft, ChevronRight, ArrowUpDown, AlertTriangle, Plus } from 'lucide-react';
+import { Search, Upload, ChevronLeft, ChevronRight, ArrowUpDown, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useRequireAuth } from '@/hooks/useAuth';
-import { fetchTransactions, uploadCSV, createTransaction } from '@/lib/api';
+import { fetchTransactions, uploadCSV, createTransaction, deleteTransaction } from '@/lib/api';
 import { CATEGORIES, type Transaction } from '@/types';
 
 
@@ -21,6 +21,7 @@ export const TransactionsPage = () => {
   const [page, setPage] = useState(1);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [newTxn, setNewTxn] = useState({ date: new Date().toISOString().split('T')[0], merchantName: '', amount: '', category: CATEGORIES[0], description: '', isRecurring: false });
   const limit = 10;
 
@@ -60,6 +61,22 @@ export const TransactionsPage = () => {
     } else {
       setSortField(field);
       setSortDir('desc');
+    }
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    const confirmed = window.confirm('Delete this transaction?');
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(id);
+      await deleteTransaction(id);
+      setTransactions((prev) => prev.filter((txn) => txn.id !== id));
+      addToast({ type: 'success', message: 'Transaction deleted!' });
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.message || 'Failed to delete transaction' });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -140,7 +157,7 @@ export const TransactionsPage = () => {
 
         {/* Table */}
         {loading ? (
-          <SkeletonTable rows={5} cols={5} />
+          <SkeletonTable rows={5} cols={6} />
         ) : (
           <div className="neo-card overflow-hidden">
             <div className="overflow-x-auto">
@@ -165,6 +182,9 @@ export const TransactionsPage = () => {
                     </th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                       Source
+                    </th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -200,6 +220,20 @@ export const TransactionsPage = () => {
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="text-xs text-[var(--text-muted)] capitalize">{txn.source}</span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          onClick={() => handleDeleteTransaction(txn.id)}
+                          disabled={deletingId === txn.id}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-red-50 disabled:opacity-40 transition-colors"
+                          title="Delete transaction"
+                        >
+                          {deletingId === txn.id ? (
+                            <span className="h-3.5 w-3.5 rounded-full border-2 border-[var(--danger)] border-t-transparent animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5 text-[var(--danger)]" />
+                          )}
+                        </button>
                       </td>
                     </tr>
                   ))}

@@ -35,11 +35,31 @@ export const getTransactions = asyncHandler(async (req: AuthenticatedRequest, re
 
 export const createTransactions = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
-  const { date, amount, merchant_name, category, description, source } = req.body;
+  const {
+    date,
+    amount,
+    merchant_name,
+    merchantName,
+    category,
+    description,
+    source,
+    is_recurring,
+    isRecurring
+  } = req.body;
+  const merchant = merchant_name || merchantName;
 
   const { data, error } = await supabase
     .from('transactions')
-    .insert([{ user_id: userId, date, amount, merchant_name, category, description, source: source || 'manual' }])
+    .insert([{
+      user_id: userId,
+      date,
+      amount,
+      merchant_name: merchant,
+      category,
+      description: description || '',
+      source: source || 'manual',
+      is_recurring: is_recurring ?? isRecurring ?? false
+    }])
     .select()
     .single();
 
@@ -96,10 +116,16 @@ export const uploadTransactions = asyncHandler(async (req: AuthenticatedRequest,
 export const updateTransactions = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
   const transactionId = req.params.id;
+  const { merchantName, isRecurring, ...rest } = req.body;
+  const updates = {
+    ...rest,
+    ...(merchantName !== undefined ? { merchant_name: merchantName } : {}),
+    ...(isRecurring !== undefined ? { is_recurring: isRecurring } : {}),
+  };
 
   const { data, error } = await supabase
     .from('transactions')
-    .update(req.body)
+    .update(updates)
     .eq('id', transactionId)
     .eq('user_id', userId)
     .select()

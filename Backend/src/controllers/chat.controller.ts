@@ -69,8 +69,39 @@ export const createChat = asyncHandler(async (req: AuthenticatedRequest, res: Re
     });
 
     // Fetch the user's actual financial data
-    const { data: recentTxns } = await supabase.from('transactions').select('date, amount, merchant_name, category').eq('user_id', user_id).order('date', { ascending: false }).limit(50);
+    const { data: recentTxns } = await supabase
+      .from('transactions')
+      .select('date, amount, merchant_name, category, description, source')
+      .eq('user_id', user_id)
+      .order('date', { ascending: false })
+      .limit(50);
     const { data: budgets } = await supabase.from('budgets').select('category, amount, period').eq('user_id', user_id);
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const monthlySpending = (recentTxns || []).reduce<Record<string, number>>((acc, txn) => {
+      const txnDate = new Date(txn.date);
+      const amount = Number(txn.amount);
+      if (txnDate.getMonth() === currentMonth && txnDate.getFullYear() === currentYear && amount < 0) {
+        acc[txn.category] = (acc[txn.category] || 0) + Math.abs(amount);
+      }
+      return acc;
+    }, {});
+
+    const budgetStatus = (budgets || []).map((budget) => {
+      const spent = monthlySpending[budget.category] || 0;
+      const percentUsed = Number(budget.amount) > 0 ? (spent / Number(budget.amount)) * 100 : 0;
+      return {
+        category: budget.category,
+        budget: Number(budget.amount),
+        period: budget.period,
+        spent,
+        remaining: Number(budget.amount) - spent,
+        percentUsed: Math.round(percentUsed),
+        overBudget: spent > Number(budget.amount),
+      };
+    });
 
     let contextText = '';
     if (documents && documents.length > 0) {
@@ -83,6 +114,8 @@ export const createChat = asyncHandler(async (req: AuthenticatedRequest, res: Re
 
     if (budgets && budgets.length > 0) {
       contextText += "Current Budgets:\n" + JSON.stringify(budgets) + "\n\n";
+      contextText += "Current Month Spending By Category (expenses are negative transaction amounts):\n" + JSON.stringify(monthlySpending) + "\n\n";
+      contextText += "Current Budget Status:\n" + JSON.stringify(budgetStatus) + "\n\n";
     }
 
     // 3. Persistent Chat Logistics
@@ -113,7 +146,8 @@ export const createChat = asyncHandler(async (req: AuthenticatedRequest, res: Re
           role: 'system',
           content: `You are Revonix, an expert AI financial assistant. You help users manage their personal finances. 
 Answer the user's questions based ONLY on the provided context, which includes their uploaded receipts, recent transactions, and budgets.
-If the user asks about their spending, summarize the transactions provided.
+If the user asks about their spending, summarize the transactions provided. Treat negative transaction amounts as spending/expenses and positive amounts as income/refunds.
+For budget questions, use Current Budget Status first and mention the category, spent amount, budget amount, and remaining or over amount.
 If the context does not contain the answer, politely say you don't have that information.
 Keep responses concise, friendly, and formatted cleanly with markdown.
 
@@ -148,4 +182,18 @@ ${contextText || "No relevant financial data found yet."}
     console.error('Chat error:', error);
     res.status(500).json({ message: 'Error processing chat request' });
   }
+});
+
+export const deleteChat = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const conversationId = req.params.conversationId;
+
+  const { error } = await supabase
+    .from('chat_conversations')
+    .delete()
+    .eq('id', conversationId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  res.json({ success: true });
 });
